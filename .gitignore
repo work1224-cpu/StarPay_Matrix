@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Local HTTPS certificate
+certs/
+
+# Environment secrets
+.env
+.env.local
+.env.*.local
+
+# Runtime data / caches (regenerated automatically, contain live business data)
+ter-cache.json
+ter-manual-sync.json
+commission-override-cache.json
+old-brokerage-override-cache.json
+launch-date-override-cache.json
+
+# User store — contains password hashes, must never be committed
+data/users.json
+
+# SQLite database (user accounts) — contains password hashes, has live data
+data/app.db
+data/app.db-wal
+data/app.db-shm
+
+# Uploaded AMC documents (large binary files, user-uploaded at runtime)
+data/amc-documents/**/files/*
+data/amc-documents/**/documents.json
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

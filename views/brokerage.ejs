@@ -1,0 +1,149 @@
+<%- include('partials/header') %>
+
+<!-- ── Hero ── -->
+<section class="hero">
+  <div class="hero-inner">
+    <div>
+      <h1>Distributor Brokerage Structures</h1>
+      <p>Scheme-wise trail commission (Year 1 / 2 / 3 / 4 / Onward) — sourced from AMC brokerage-structure sheets</p>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <strong><%= status.total %></strong>
+        <span>Total Schemes</span>
+      </div>
+      <div class="hero-stat">
+        <strong><%= status.amcCount %></strong>
+        <span>AMCs</span>
+      </div>
+      <div class="hero-stat">
+        <strong>Static</strong>
+        <span>Data Status</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Main Content ── -->
+<main class="main">
+
+  <!-- ── Filters ── -->
+  <div class="filter-card" id="brokerageFiltersCard">
+    <div class="filter-card-header">
+      <h2>🔎 Filter Brokerage Data</h2>
+      <div class="filter-actions">
+        <button class="btn btn-ghost btn-sm" data-onclick="resetBrokerageFilters">✕ Reset Filters</button>
+      </div>
+    </div>
+
+    <div class="filter-grid">
+
+      <!-- AMC -->
+      <div class="filter-group">
+        <label for="bFilterAMC">AMC</label>
+        <select id="bFilterAMC" class="filter-control">
+          <option value="">All AMCs</option>
+          <% amcs.forEach(a => { %>
+            <option value="<%= a %>"><%= a %></option>
+          <% }); %>
+        </select>
+      </div>
+
+      <!-- Category -->
+      <div class="filter-group">
+        <label for="bFilterCategory">Category / Tier</label>
+        <select id="bFilterCategory" class="filter-control">
+          <option value="">All Categories</option>
+          <% categories.forEach(c => { %>
+            <option value="<%= c %>"><%= c %></option>
+          <% }); %>
+        </select>
+      </div>
+
+      <!-- GST Treatment -->
+      <div class="filter-group">
+        <label for="bFilterGST">GST Treatment</label>
+        <select id="bFilterGST" class="filter-control">
+          <option value="">All</option>
+          <option value="Inclusive of GST">Inclusive of GST</option>
+          <option value="Exclusive of GST">Exclusive of GST</option>
+          <option value="Not specified">Not specified</option>
+        </select>
+      </div>
+
+      <!-- Scheme Name Search -->
+      <div class="filter-group">
+        <label for="bFilterSearch">Scheme Name</label>
+        <input id="bFilterSearch" class="filter-control" type="search" placeholder="Search scheme name…" autocomplete="off">
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Table ── -->
+  <div class="table-card">
+
+    <div class="table-card-header">
+      <div class="table-info">
+        Showing <strong id="bShowingCount">–</strong> of <strong id="bTotalCount">–</strong> schemes
+      </div>
+
+      <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:.4rem">
+          <label style="font-size:.8rem;color:var(--text-muted)" for="bPageSize">Rows:</label>
+          <select id="bPageSize" class="filter-control" style="width:80px;padding:.3rem .5rem">
+            <option value="25">25</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+            <option value="200">200</option>
+          </select>
+        </div>
+
+        <div class="export-actions">
+          <button class="btn btn-primary btn-sm" data-onclick="exportBrokerageAllExcel" title="Download ALL rows to Excel">
+            📊 <span>Export All</span>
+          </button>
+          <button class="btn btn-ghost btn-sm" data-onclick="exportBrokerageCSV" title="Export filtered data as CSV">
+            📄 <span>CSV</span>
+          </button>
+          <button class="btn btn-ghost btn-sm" data-onclick="copyBrokerageTable" title="Copy to clipboard">
+            📋 <span>Copy</span>
+          </button>
+          <button class="btn btn-ghost btn-sm" data-onclick="printTable" title="Print">
+            🖨️ <span>Print</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-scroll">
+      <table class="ter-table">
+        <thead class="sticky-thead">
+          <tr>
+            <th class="col-sr" data-onclick="sortByB" data-onclick-arg="id" data-col="id">#<span class="sort-icon">⇅</span></th>
+            <th data-onclick="sortByB" data-onclick-arg="amc" data-col="amc">AMC / Firm<span class="sort-icon">⇅</span></th>
+            <th data-onclick="sortByB" data-onclick-arg="scheme" data-col="scheme">Scheme Name<span class="sort-icon">⇅</span></th>
+            <th data-onclick="sortByB" data-onclick-arg="category" data-col="category">Category / Tier<span class="sort-icon">⇅</span></th>
+            <th class="col-num" data-onclick="sortByB" data-onclick-arg="year1" data-col="year1">1st Yr %<span class="sort-icon">⇅</span></th>
+            <th class="col-num" data-onclick="sortByB" data-onclick-arg="year2" data-col="year2">2nd Yr %<span class="sort-icon">⇅</span></th>
+            <th class="col-num" data-onclick="sortByB" data-onclick-arg="year3" data-col="year3">3rd Yr %<span class="sort-icon">⇅</span></th>
+            <th class="col-num" data-onclick="sortByB" data-onclick-arg="year4" data-col="year4">4th Yr %<span class="sort-icon">⇅</span></th>
+            <th class="col-num" data-onclick="sortByB" data-onclick-arg="yearOnward" data-col="yearOnward">5th Yr Onward %<span class="sort-icon">⇅</span></th>
+            <th data-onclick="sortByB" data-onclick-arg="gst" data-col="gst">GST Treatment<span class="sort-icon">⇅</span></th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody id="bTbody"></tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination" id="bPagination"></div>
+
+  </div>
+</main>
+
+<script src="/js/brokerage.js"></script>
+
+<%- include('partials/footer') %>

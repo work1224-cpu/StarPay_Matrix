@@ -1,0 +1,22 @@
+{
+  "watch": [
+    "server.js",
+    "config",
+    "controllers",
+    "helpers",
+    "middleware",
+    "routes",
+    "services",
+    "public",
+    "views"
+  ],
+  "ignore": [
+    "ter-cache.json",
+    "ter-manual-sync.json",
+    "commission-override-cache.json",
+    "launch-date-override-cache.json",
+    "old-brokerage-override-cache.json",
+    "data/**",
+    "certs/**"
+  ]
+}

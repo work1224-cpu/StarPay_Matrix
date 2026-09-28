@@ -1,0 +1,112 @@
+<%- include('partials/header') %>
+
+<div class="main">
+  <div class="filter-card">
+    <div class="filter-card-header">
+      <div>
+        <p class="eyebrow">Admin panel</p>
+        <h2>Manage users</h2>
+      </div>
+      <a class="btn btn-outline btn-sm" href="/">← Back to portal</a>
+    </div>
+
+    <% if (success) { %>
+      <div class="notification notification-success"><%= success %></div>
+    <% } %>
+    <% if (error) { %>
+      <div class="notification notification-error"><%= error %></div>
+    <% } %>
+
+    <div class="admin-grid">
+      <div class="auth-card admin-panel-card">
+        <h3>Create a new user</h3>
+        <p class="auth-description">Create viewer or admin accounts that can access the portal without a separate database.</p>
+        <form class="auth-form" action="/admin/users" method="post">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <div class="field">
+            <label for="username">Username</label>
+            <input id="username" name="username" type="text" required placeholder="user@example.com">
+          </div>
+          <div class="field">
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" required placeholder="Choose a secure password">
+          </div>
+          <div class="field">
+            <label for="role">Role</label>
+            <select id="role" name="role" class="filter-control">
+              <option value="viewer">Viewer</option>
+              <option value="data_operator">Data Operator</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" type="submit">Create User</button>
+        </form>
+      </div>
+
+      <div class="auth-card admin-panel-card">
+        <h3>Existing users</h3>
+        <div style="overflow-x:auto;">
+          <table class="user-table">
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Role</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% users.forEach(user => { %>
+                <tr data-username="<%= user.username %>">
+                  <td><strong><%= user.username %></strong></td>
+                  <td><span class="badge <%= user.role === 'admin' ? 'badge-open' : (user.role === 'data_operator' ? 'badge-role-operator' : 'badge-interval') %>"><%= user.role %></span></td>
+                  <td><%= new Date(user.createdAt).toLocaleString() %></td>
+                  <td>
+                    <button class="btn btn-sm btn-outline" data-action="change-password" data-username="<%= user.username %>" title="Change password">
+                      🔑
+                    </button>
+                    <% if (currentUser && currentUser.username !== user.username) { %>
+                      <button class="btn btn-sm btn-danger" data-action="delete-user" data-username="<%= user.username %>" title="Delete user">
+                        🗑️
+                      </button>
+                    <% } %>
+                  </td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+        <p style="margin-top:1rem;font-size:.8rem;color:var(--text-muted);">
+          <strong>Note:</strong> You cannot delete your own account or the only admin user.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Change Password Modal -->
+<div id="passwordModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:var(--radius);padding:2rem;max-width:400px;width:90%;box-shadow:var(--shadow-lg);">
+    <h3 style="margin-bottom:0.5rem;">Change Password</h3>
+    <p style="color:var(--text-muted);margin-bottom:1rem;">Update password for: <strong id="modalUsername"></strong></p>
+    <form id="passwordForm" data-onsubmit="submitPasswordChange">
+      <div class="field" style="margin-bottom:1rem;">
+        <label for="newPassword">New Password</label>
+        <input id="newPassword" name="newPassword" type="password" required minlength="4" placeholder="Enter new password">
+      </div>
+      <div class="field" style="margin-bottom:1rem;">
+        <label for="confirmPassword">Confirm Password</label>
+        <input id="confirmPassword" name="confirmPassword" type="password" required minlength="4" placeholder="Confirm new password">
+      </div>
+      <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
+        <button type="button" class="btn btn-ghost" data-onclick="closePasswordModal">Cancel</button>
+        <button type="submit" class="btn btn-primary">Update Password</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="/js/admin-users.js?v=<%= assetVersion %>"></script>
+
+
+<%- include('partials/footer') %>

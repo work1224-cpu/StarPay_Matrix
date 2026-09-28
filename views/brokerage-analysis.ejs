@@ -1,0 +1,179 @@
+<%- include('partials/header') %>
+
+<!-- Chart.js — vendored locally (no CDN/internet dependency), used only by this page -->
+<script src="/js/vendor/chart.umd.js?v=<%= assetVersion %>"></script>
+
+<!-- ── Hero ── -->
+<section class="hero">
+  <div class="hero-inner">
+    <div>
+      <h1>📊 Brokerage Data Analysis</h1>
+      <p>Cross-year, cross-AMC, cross-category comparison of every scheme's trail/brokerage commission structure — Home page + All Brokerage Data, combined.</p>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <strong id="baTotalRecords">–</strong>
+        <span>Records Analysed</span>
+      </div>
+      <div class="hero-stat">
+        <strong><%= baTotalSchemes %></strong>
+        <span>Schemes</span>
+      </div>
+      <div class="hero-stat">
+        <strong><%= baAmcs.length %></strong>
+        <span>AMCs</span>
+      </div>
+      <div class="hero-stat">
+        <strong id="baTotalPeriods">–</strong>
+        <span>Quarters / Periods</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<main class="main">
+
+  <!-- ── Filters ── -->
+  <section class="filter-card" aria-label="Analysis filters">
+    <div class="filter-card-header">
+      <h2>🔎 Refine Analysis</h2>
+      <div class="filter-actions">
+        <button class="btn btn-outline btn-sm" id="baResetFilters" type="button">✕ Reset Filters</button>
+      </div>
+    </div>
+    <div class="filter-grid">
+      <div class="filter-group">
+        <label for="baFilterAmc">AMC</label>
+        <select id="baFilterAmc" class="filter-control">
+          <option value="">All AMCs</option>
+          <% baAmcs.forEach(a => { %><option value="<%= a %>"><%= a %></option><% }); %>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="baFilterCategory">Category</label>
+        <select id="baFilterCategory" class="filter-control">
+          <option value="">All Categories</option>
+          <% baCategories.forEach(c => { %><option value="<%= c %>"><%= c %></option><% }); %>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="baFilterYear">Year</label>
+        <select id="baFilterYear" class="filter-control">
+          <option value="">All Years</option>
+          <% baYears.forEach(y => { %><option value="<%= y %>"><%= y %></option><% }); %>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="baFilterCommYear">Commission Column</label>
+        <select id="baFilterCommYear" class="filter-control">
+          <option value="year1">Year 1</option>
+          <option value="year2">Year 2</option>
+          <option value="year3">Year 3</option>
+          <option value="year4">Year 4</option>
+          <option value="year5">Year 5</option>
+          <option value="year6">6th Yr Onward</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Charts grid ── -->
+  <div class="chart-grid">
+
+    <section class="chart-card chart-card-wide">
+      <div class="chart-card-header">
+        <h2>📈 Commission Trend Over Time</h2>
+        <p>Average commission (selected column) by calendar year, across every AMC and scheme on record.</p>
+      </div>
+      <div class="chart-canvas-wrap"><canvas id="baChartTrend"></canvas></div>
+    </section>
+
+    <section class="chart-card">
+      <div class="chart-card-header">
+        <h2>🏦 Top AMCs by Commission</h2>
+        <p>Highest average commission (selected column), top 12 AMCs.</p>
+      </div>
+      <div class="chart-canvas-wrap"><canvas id="baChartAmc"></canvas></div>
+    </section>
+
+    <section class="chart-card">
+      <div class="chart-card-header">
+        <h2>🗂️ Top Categories by Commission</h2>
+        <p>Highest average commission (selected column), top 12 scheme categories.</p>
+      </div>
+      <div class="chart-canvas-wrap"><canvas id="baChartCategory"></canvas></div>
+    </section>
+
+    <section class="chart-card">
+      <div class="chart-card-header">
+        <h2>🪜 Commission by Holding Year</h2>
+        <p>Average Year 1 → 6th Yr Onward commission — does trail commission taper off the longer a scheme is held?</p>
+      </div>
+      <div class="chart-canvas-wrap"><canvas id="baChartHolding"></canvas></div>
+    </section>
+
+    <section class="chart-card">
+      <div class="chart-card-header">
+        <h2>📊 Commission Distribution</h2>
+        <p>How many scheme-records fall into each Year 1 commission % band.</p>
+      </div>
+      <div class="chart-canvas-wrap"><canvas id="baChartDistribution"></canvas></div>
+    </section>
+
+  </div>
+
+  <!-- ── Scheme Explorer ── -->
+  <section class="filter-card" aria-label="Scheme-level comparison">
+    <div class="filter-card-header">
+      <div>
+        <h2>🔬 Scheme Explorer</h2>
+        <p class="sync-helper">Pick a scheme to see its full commission history, period by period, as a trend line and a table — great for spotting a cut or hike in trail commission over time.</p>
+      </div>
+    </div>
+    <div class="filter-grid">
+      <div class="filter-group">
+        <label for="baSchemeAmc">AMC</label>
+        <select id="baSchemeAmc" class="filter-control">
+          <option value="">All AMCs</option>
+          <% baAmcs.forEach(a => { %><option value="<%= a %>"><%= a %></option><% }); %>
+        </select>
+      </div>
+      <div class="filter-group" style="grid-column: span 2">
+        <label for="baSchemeSearch">Scheme Name</label>
+        <select id="baSchemeSearch" class="filter-control">
+          <option value="">Select a scheme…</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="baSchemeEmpty" class="chart-empty-hint">Search and pick a scheme above to see its commission history.</div>
+
+    <div id="baSchemeResult" hidden>
+      <div class="chart-canvas-wrap" style="max-height:320px; margin-top:1rem;"><canvas id="baChartScheme"></canvas></div>
+      <div class="table-scroll" style="margin-top:1rem;">
+        <table class="ter-table">
+          <thead class="sticky-thead">
+            <tr>
+              <th>Data Period (Validity)</th>
+              <th>AMC</th>
+              <th>Category</th>
+              <th>ARN No.</th>
+              <th class="col-num">1st Yr %</th>
+              <th class="col-num">2nd Yr %</th>
+              <th class="col-num">3rd Yr %</th>
+              <th class="col-num">4th Yr %</th>
+              <th class="col-num">5th Yr %</th>
+              <th class="col-num">6th Yr Onward %</th>
+            </tr>
+          </thead>
+          <tbody id="baSchemeTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script src="/js/brokerage-analysis.js?v=<%= assetVersion %>"></script>
+
+<%- include('partials/footer') %>

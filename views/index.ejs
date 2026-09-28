@@ -1,0 +1,396 @@
+<%- include('partials/header') %>
+
+<!-- ── Hero ── -->
+<section class="hero">
+  <div class="hero-inner">
+    <div>
+      <h1>StarPay Matrix</h1>
+      <p>Live Total Expense Ratio data for all AMFI registered schemes</p>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <strong id="heroSchemeCount">–</strong>
+        <span>Total Schemes</span>
+      </div>
+      <div class="hero-stat">
+        <strong id="heroAmcCount">–</strong>
+        <span>AMCs</span>
+      </div>
+      <div class="hero-stat">
+        <strong><%= latestPeriod ? latestPeriod : '–' %></strong>
+        <span>Latest Data Period</span>
+      </div>
+      <div class="hero-stat">
+        <strong><%= status.status === 'ready' ? 'Live' : status.status %></strong>
+        <span>Data Status</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Main Content ── -->
+<main class="main" data-admin="<%= currentUser && (currentUser.role === 'admin' || currentUser.role === 'data_operator') ? 'true' : 'false' %>" data-selected-amc="<%= selectedAmc || '' %>">
+    <section class="main-panel">
+
+  <section class="filter-card sync-actions-card" aria-label="Data backup controls">
+    <div class="filter-card-header">
+      <div>
+        <h2>Data Sync Backup</h2>
+        <p class="sync-helper" id="syncStatus">Save a known-good copy before refreshing data. The saved copy can be opened if live scraping fails.</p>
+      </div>
+      <div class="filter-actions">
+        <% if (isAdmin) { %>
+          <button class="btn btn-primary btn-sm" id="btnSaveSync" type="button">Save Sync</button>
+          <button class="btn btn-danger btn-sm" id="btnClearOldBrokerage" type="button">Clear Old Brokerage Data</button>
+        <% } %>
+        <button class="btn btn-outline btn-sm" id="btnGetOldSync" type="button">Get Old Sync Data</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Clear Old Brokerage Data — confirmation modal ── -->
+  <div class="modal-overlay" id="clearBrokerageModal" hidden>
+    <div class="modal-box" role="alertdialog" aria-modal="true" aria-labelledby="clearBrokerageModalTitle">
+      <div class="modal-icon">⚠️</div>
+      <h3 id="clearBrokerageModalTitle">Clear Old Brokerage Data?</h3>
+      <p>This will <strong>permanently remove</strong> every stored scheme commission (Year&nbsp;1 – Year&nbsp;6) value currently shown in the matrix below. This action cannot be undone.</p>
+      <p class="modal-hint">Tip: Click <strong>Save Sync</strong> first if you want a backup copy before clearing.</p>
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="clearBrokerageCancelBtn" type="button">Cancel</button>
+        <button class="btn btn-danger" id="clearBrokerageConfirmBtn" type="button">Yes, Clear Data</button>
+      </div>
+    </div>
+  </div>
+
+  <% if (selectedAmc) { %>
+  <section class="filter-card amc-docs-card">
+    <div class="filter-card-header">
+      <h2>📁 <%= selectedAmc %> Documents</h2>
+      <div class="filter-actions">
+        <% if (canManageAmc && amcDocuments.length) { %>
+          <label class="btn btn-ghost btn-sm document-select-all" for="selectAllDocuments">
+            <input id="selectAllDocuments" type="checkbox"> Select All
+          </label>
+          <span class="document-selected-count" id="selectedDocumentsCount">Selected: 0</span>
+          <button class="btn btn-danger btn-sm" id="deleteSelectedDocuments" type="button" disabled>Delete Selected</button>
+        <% } %>
+        <% if (canManageAmc) { %>
+          <label class="btn btn-outline btn-sm upload-btn" for="amcDocFile">📄 Upload Files</label>
+          <input id="amcDocFile" type="file" accept=".pdf,.xlsx,.xls,.png,.jpg,.jpeg" multiple hidden>
+        <% } %>
+      </div>
+    </div>
+    <div class="document-folders" role="tablist" aria-label="AMC document folders">
+      <% documentFolders.forEach((folder) => { %>
+        <button type="button" class="btn btn-ghost btn-sm <%= folder === selectedFolder ? 'active' : '' %>" data-doc-folder-tab="<%= folder %>"><%= folder %></button>
+      <% }) %>
+    </div>
+    <input type="hidden" id="activeDocFolder" value="<%= selectedFolder %>">
+    <p class="doc-helper">Admins can upload and manage files in the selected folder; viewers can open or download them read-only.</p>
+    <div id="amcDocumentsList" class="document-list">
+      <% amcDocuments.forEach((doc) => { %>
+        <article class="document-item">
+          <% if (canManageAmc) { %>
+            <input class="document-select" type="checkbox" value="<%= doc.id %>" aria-label="Select <%= doc.title %>">
+          <% } %>
+          <div>
+            <a class="document-title" href="/api/amcs/<%= encodeURIComponent(activeAmcSlug || selectedAmc.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')) %>/documents/<%= doc.id %>/download?folder=<%= encodeURIComponent(selectedFolder) %>" target="_blank" rel="noopener">
+              <%= doc.title %>
+            </a>
+            <p class="document-meta">Uploaded by <%= doc.uploadedBy %> • <%= new Date(doc.updatedAt || doc.createdAt).toLocaleString('en-IN') %></p>
+          </div>
+          <% if (canManageAmc) { %>
+            <div class="document-actions">
+              <button class="btn btn-ghost btn-sm" type="button" data-doc-action="replace" data-doc-id="<%= doc.id %>">Replace</button>
+              <button class="btn btn-danger btn-sm" type="button" data-doc-action="delete" data-doc-id="<%= doc.id %>">Delete</button>
+            </div>
+          <% } %>
+        </article>
+      <% }); %>
+    </div>
+  </section>
+  <% } %>
+
+  <% if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'data_operator')) { %>
+  <!-- ── Data Upload ── -->
+  <div class="filter-card" id="uploadCard">
+    <div class="filter-card-header">
+      <h2>📤 Data Upload</h2>
+    </div>
+
+    <div class="upload-chooser">
+      <button class="btn btn-outline upload-toggle-btn" id="btnShowCommission">💰 Commission Structure Upload</button>
+      <button class="btn btn-outline upload-toggle-btn" id="btnShowAmcDocuments">📄 AMC Documents Upload</button>
+      <a class="btn btn-outline upload-toggle-btn" id="btnDownloadDemo" href="/api/download/demo-commission-file" download>⬇️ Download Demo File</a>
+    </div>
+
+    <datalist id="amcDatalist"></datalist>
+
+    <!-- Commission Structure Upload panel — same Excel format as the
+         "All Brokerage Data" (Old Brokerage Data) page's own Commission
+         Structure Upload, so one file works for both; no separate format
+         needed. Covers every AMC found in the file automatically. For
+         each AMC it uses only the MOST RECENT Data Period, and within
+         that period prefers ARN 280532's rows if present — otherwise
+         whichever ARN is there for that period. Every other AMC already
+         on the table is left untouched. -->
+    <div class="upload-panel" id="panelCommission" hidden>
+      <div class="upload-box">
+        <div class="upload-box-title">Commission Structure Upload</div>
+        <div class="upload-box-sub">Upload the same sheet used on the "All Brokerage Data" page (AMC, Data Period, Scheme Name, ARN No., Category, Year 1-6). For each AMC, only its <strong>most recent Data Period</strong> is applied — within that, <strong>ARN 280532</strong> is used if present, otherwise whichever ARN is there for that period.</div>
+        <div class="filter-group">
+          <label for="amcCommission">AMC to update</label>
+          <select id="amcCommission" class="filter-control">
+            <option value="__all__">All AMCs</option>
+            <% amcs.forEach(a => { %>
+              <option value="<%= a %>"><%= a %></option>
+            <% }); %>
+          </select>
+        </div>
+        <input type="file" id="fileCommission" accept=".xlsx,.xls" hidden>
+        <label for="fileCommission" class="btn btn-outline btn-sm upload-btn">📁 Choose File</label>
+        <span class="upload-filename" id="fileNameCommission">No file chosen</span>
+        <button class="btn btn-primary btn-sm upload-submit" id="submitCommission" disabled>⬆ Upload &amp; Update</button>
+        <div class="upload-status" id="statusCommission"></div>
+      </div>
+    </div>
+
+    <div class="upload-panel" id="panelAmcDocuments" hidden>
+      <div class="upload-box">
+        <div class="upload-box-title">AMC Documents Upload</div>
+        <div class="upload-box-sub">Upload PDF or image files to the selected AMC and ARN folder(s).</div>
+        <div class="filter-group">
+          <label for="amcDocumentUpload">AMC</label>
+          <select id="amcDocumentUpload" class="filter-control">
+            <option value="__all__">All AMCs</option>
+            <% amcs.forEach(a => { %>
+              <option value="<%= a %>"><%= a %></option>
+            <% }); %>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="arnDocumentUpload">ARN Folder</label>
+          <select id="arnDocumentUpload" class="filter-control">
+            <option value="all">All Files</option>
+            <option value="ARN-1182">ARN-1182</option>
+            <option value="ARN-1183">ARN-1183</option>
+            <option value="ARN-1184">ARN-1184</option>
+            <option value="ARN-13025">ARN-13025</option>
+            <option value="ARN-17196">ARN-17196</option>
+            <option value="ARN-280532">ARN-280532</option>
+            <option value="ARN-50111">ARN-50111</option>
+          </select>
+        </div>
+        <input type="file" id="fileAmcDocuments" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp" multiple hidden>
+        <label for="fileAmcDocuments" class="btn btn-outline btn-sm upload-btn">📁 Choose Files</label>
+        <span class="upload-filename" id="fileNameAmcDocuments">No files chosen</span>
+        <button class="btn btn-primary btn-sm upload-submit" id="submitAmcDocuments" disabled>⬆ Upload Documents</button>
+        <div class="upload-status" id="statusAmcDocuments"></div>
+      </div>
+    </div>
+
+  </div>
+  <% } else if (!currentUser) { %>
+  <div class="filter-card auth-note-card">
+    <h2>🔐 Restricted actions</h2>
+    <p>Login as admin to upload Excel files and manage users. Regular viewers can browse the latest TER data.</p>
+  </div>
+  <% } %>
+
+  <!-- ── Filters ── -->
+  <div class="filter-card" id="mainFiltersCard">
+    <div class="filter-card-header">
+      <h2>🔎 Filter Schemes</h2>
+      <div class="filter-actions">
+        <button class="btn btn-ghost btn-sm" data-onclick="resetFilters">✕ Reset Filters</button>
+      </div>
+    </div>
+
+    <div class="filter-grid">
+
+      <!-- AMC -->
+      <div class="filter-group">
+        <label for="filterAMC">AMC</label>
+        <select id="filterAMC" class="filter-control">
+          <option value="">All AMCs</option>
+          <% amcs.forEach(a => { %>
+            <option value="<%= a %>"><%= a %></option>
+          <% }); %>
+        </select>
+        <a id="btnViewAmcDocs" class="amc-files-link is-disabled" href="#" aria-disabled="true" tabindex="-1" title="Select an AMC to open its files">📁 Open All Files</a>
+      </div>
+
+      <!-- Category -->
+      <div class="filter-group">
+        <label for="filterCategory">Scheme Category</label>
+        <select id="filterCategory" class="filter-control">
+          <option value="">All Categories</option>
+          <% categories.forEach(c => { %>
+            <option value="<%= c %>"><%= c %></option>
+          <% }); %>
+        </select>
+      </div>
+
+      <!-- Type -->
+      <div class="filter-group">
+        <label for="filterType">Scheme Type</label>
+        <select id="filterType" class="filter-control">
+          <option value="">All Types</option>
+          <% types.forEach(t => { %>
+            <option value="<%= t %>"><%= t %></option>
+          <% }); %>
+        </select>
+      </div>
+
+      <!-- Missing Brokerage Data -->
+      <div class="filter-group">
+        <label for="filterMissingBrokerage">Brokerage Data</label>
+        <select id="filterMissingBrokerage" class="filter-control">
+          <option value="">All Schemes</option>
+          <option value="missing">Missing any 1–6 YR value</option>
+        </select>
+      </div>
+
+      <!-- Scheme Name Search -->
+      <div class="filter-group">
+        <label for="filterSearch">Scheme Name</label>
+        <input id="filterSearch" class="filter-control" type="search" placeholder="Search scheme name…" autocomplete="off">
+      </div>
+
+      <!-- NSDL Code -->
+      <div class="filter-group">
+        <label for="filterNSDL">NSDL Code</label>
+        <input id="filterNSDL" class="filter-control" type="search" placeholder="e.g. INF123…" autocomplete="off">
+      </div>
+
+      <!-- AMFI Code -->
+      <div class="filter-group">
+        <label for="filterAMFI">AMFI Code</label>
+        <input id="filterAMFI" class="filter-control" type="search" placeholder="e.g. 100016" autocomplete="off">
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Table ── -->
+  <div class="table-card">
+
+    <div class="table-card-header">
+      <div class="table-info" style="display:flex;align-items:center;gap:.9rem;flex-wrap:wrap">
+        <span>Showing <strong id="showingCount">–</strong> of <strong id="totalCount">–</strong> schemes</span>
+
+        <div class="ob-col-chooser" id="mainColChooser">
+          <button class="btn btn-ghost btn-sm" id="mainColChooserBtn" type="button" aria-expanded="false" aria-controls="mainColMenu" data-onclick="mainToggleColMenu" data-onclick-event="1">👁 Columns <span class="sort-icon" id="mainColChooserArrow">▾</span></button>
+          <div class="ob-col-menu" id="mainColMenu" hidden>
+            <div class="ob-col-menu-title">Hide columns</div>
+            <label><input type="checkbox" value="nsdlCode"> NSDL Code</label>
+            <label><input type="checkbox" value="amfiCode"> AMFI Code</label>
+            <label><input type="checkbox" value="schemeName"> Scheme Name</label>
+            <label><input type="checkbox" value="launchDate"> Launch Date</label>
+            <label><input type="checkbox" value="amc"> AMC</label>
+            <label><input type="checkbox" value="schemeType"> Scheme Type</label>
+            <label><input type="checkbox" value="schemeCategory"> Category</label>
+            <label><input type="checkbox" value="brokeragePeriod"> Date Period</label>
+            <label><input type="checkbox" value="brokerageArn"> ARN No.</label>
+            <label><input type="checkbox" value="terDiff"> TER Diff</label>
+            <label><input type="checkbox" value="berDiff"> BER Diff</label>
+            <label><input type="checkbox" value="regularBER"> BER (%)</label>
+            <label><input type="checkbox" value="year1"> 1 YR</label>
+            <label><input type="checkbox" value="year2"> 2 YR</label>
+            <label><input type="checkbox" value="year3"> 3 YR</label>
+            <label><input type="checkbox" value="year4"> 4 YR</label>
+            <label><input type="checkbox" value="yearOnward"> 5 YR</label>
+            <label><input type="checkbox" value="year6Onward"> 6 YR</label>
+            <label><input type="checkbox" value="c1"> C/B 1YR</label>
+            <label><input type="checkbox" value="c2"> C/B 2YR</label>
+            <label><input type="checkbox" value="c3"> C/B 3YR</label>
+            <label><input type="checkbox" value="c4"> C/B 4YR</label>
+            <label><input type="checkbox" value="c5"> C/B 5YR</label>
+            <label><input type="checkbox" value="c6"> C/B 6YR</label>
+            <button class="btn btn-ghost btn-sm" id="mainColResetBtn" type="button" style="margin-top:.4rem;width:100%">↺ Show All</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+        <!-- Page Size -->
+        <div style="display:flex;align-items:center;gap:.4rem">
+          <label style="font-size:.8rem;color:var(--text-muted)" for="pageSize">Rows:</label>
+          <select id="pageSize" class="filter-control" style="width:80px;padding:.3rem .5rem">
+            <option value="25">25</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+            <option value="200">200</option>
+          </select>
+        </div>
+
+        <!-- Export Actions -->
+        <div class="export-actions">
+          <button class="btn btn-primary btn-sm" data-onclick="exportAllExcel" title="Download ALL schemes to Excel">
+            📊 <span>Export All</span>
+          </button>
+          <button class="btn btn-ghost btn-sm" data-onclick="exportCSV" title="Export filtered data as CSV">
+            📄 <span>CSV</span>
+          </button>
+          <button class="btn btn-ghost btn-sm" data-onclick="exportExcel" title="Export filtered data as Excel">
+            📊 <span>Excel</span>
+          </button>
+          <button class="btn btn-ghost btn-sm" data-onclick="copyTable" title="Copy to clipboard">
+            📋 <span>Copy</span>
+          </button>
+          <button class="btn btn-ghost btn-sm" data-onclick="printTable" title="Print">
+            🖨️ <span>Print</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-scroll">
+      <table class="ter-table">
+        <thead class="sticky-thead">
+          <tr>
+            <th class="col-sr" data-onclick="sortBy" data-onclick-arg="srNo" data-col="srNo">#<span class="sort-icon">⇅</span></th>
+            <th class="col-nsdl" data-onclick="sortBy" data-onclick-arg="nsdlCode" data-col="nsdlCode">NSDL Code<span class="sort-icon">⇅</span></th>
+            <th class="col-amfi" data-onclick="sortBy" data-onclick-arg="amfiCode" data-col="amfiCode">AMFI Code<span class="sort-icon">⇅</span></th>
+            <th class="col-name" data-onclick="sortBy" data-onclick-arg="schemeName" data-col="schemeName">Scheme Name<span class="sort-icon">⇅</span></th>
+            <th class="col-launch" data-onclick="sortBy" data-onclick-arg="launchDate" data-col="launchDate">Launch Date<span class="sort-icon">⇅</span></th>
+            <th class="col-amc" data-onclick="sortBy" data-onclick-arg="amc" data-col="amc">AMC<span class="sort-icon">⇅</span></th>
+            <th class="col-type" data-onclick="sortBy" data-onclick-arg="schemeType" data-col="schemeType">Scheme Type<span class="sort-icon">⇅</span></th>
+            <th class="col-cat" data-onclick="sortBy" data-onclick-arg="schemeCategory" data-col="schemeCategory">Category<span class="sort-icon">⇅</span></th>
+            <th class="col-period" data-col="brokeragePeriod">Date Period</th>
+            <th class="col-period" data-col="brokerageArn">ARN No.</th>
+            <th class="col-num" data-onclick="sortBy" data-onclick-arg="terDiff" data-col="terDiff">TER Diff<span class="sort-icon">⇅</span></th>
+            <th class="col-num" data-onclick="sortBy" data-onclick-arg="berDiff" data-col="berDiff">BER Diff<span class="sort-icon">⇅</span></th>
+            <th class="col-num col-ber" data-onclick="sortBy" data-onclick-arg="regularBER" data-col="regularBER">BER (%)<span class="sort-icon">⇅</span></th>
+            <th class="col-num" data-onclick="sortBy" data-onclick-arg="year1" data-col="year1">1 YR<span class="sort-icon">⇅</span></th>
+            <th class="col-num" data-onclick="sortBy" data-onclick-arg="year2" data-col="year2">2 YR<span class="sort-icon">⇅</span></th>
+            <th class="col-num" data-onclick="sortBy" data-onclick-arg="year3" data-col="year3">3 YR<span class="sort-icon">⇅</span></th>
+            <th class="col-num" data-onclick="sortBy" data-onclick-arg="year4" data-col="year4">4 YR<span class="sort-icon">⇅</span></th>
+            <th class="col-num col-year5" data-onclick="sortBy" data-onclick-arg="yearOnward" data-col="yearOnward">5 YR<span class="sort-icon">⇅</span></th>
+            <th class="col-num col-year6" data-onclick="sortBy" data-onclick-arg="year6Onward" data-col="year6Onward">6 YR<span class="sort-icon">⇅</span></th>
+            <th class="col-num col-ratio" data-onclick="sortBy" data-onclick-arg="c1" data-col="c1">C/B 1YR<span class="sort-icon">⇅</span></th>
+            <th class="col-num col-ratio" data-onclick="sortBy" data-onclick-arg="c2" data-col="c2">C/B 2YR<span class="sort-icon">⇅</span></th>
+            <th class="col-num col-ratio" data-onclick="sortBy" data-onclick-arg="c3" data-col="c3">C/B 3YR<span class="sort-icon">⇅</span></th>
+            <th class="col-num col-ratio" data-onclick="sortBy" data-onclick-arg="c4" data-col="c4">C/B 4YR<span class="sort-icon">⇅</span></th>
+            <th class="col-num col-ratio" data-onclick="sortBy" data-onclick-arg="c5" data-col="c5">C/B 5YR<span class="sort-icon">⇅</span></th>
+            <th class="col-num col-ratio" data-onclick="sortBy" data-onclick-arg="c6" data-col="c6">C/B 6YR<span class="sort-icon">⇅</span></th>
+            <% if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'data_operator')) { %>
+            <th class="col-actions">Edit</th>
+            <% } %>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination" id="pagination"></div>
+
+  </div>
+    </section>
+</main>
+
+<script src="/js/upload.js?v=<%= assetVersion %>"></script>
+<script src="/js/amc-documents.js?v=<%= assetVersion %>"></script>
+<%- include('partials/footer') %>

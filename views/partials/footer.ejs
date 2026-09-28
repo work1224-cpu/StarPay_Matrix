@@ -1,0 +1,23 @@
+<!-- ── Footer ── -->
+<footer class="footer">
+  <p>
+    Data sourced from <a href="https://www.amfiindia.com/ter-of-mf-schemes" target="_blank" rel="noopener">AMFI India</a>
+    &nbsp;·&nbsp; Refreshed automatically every 30 minutes
+    &nbsp;·&nbsp; <a href="/about">About</a>
+  </p>
+  <p style="margin-top:.4rem;opacity:.6">
+    Disclaimer: This portal is for informational purposes only. Always verify data from official AMFI sources.
+  </p>
+</footer>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script src="/js/main.js?v=<%= assetVersion %>"></script>
+<script src="/js/amc-menu.js?v=<%= assetVersion %>"></script>
+<!-- Must load last: dispatches data-onclick/data-onsubmit to the global
+     functions declared by the scripts above (CSP-safe replacement for
+     old inline click/submit handler attributes). -->
+<script src="/js/inline-actions.js?v=<%= assetVersion %>"></script>
+</body>
+</html>

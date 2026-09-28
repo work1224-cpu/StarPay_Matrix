@@ -1,0 +1,349 @@
+<%- include('partials/header') %>
+
+<!-- ── Hero ── -->
+<section class="hero">
+  <div class="hero-inner">
+    <div>
+      <h1>Old Brokerage Data</h1>
+      <p>Date-wise historical distributor trail/brokerage structures — sourced from Mutual_Fund_Brokerage_Consolidated_Verified.xlsx</p>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <strong id="obTotalHero"><%= obMeta.total %></strong>
+        <span>Total Records</span>
+      </div>
+      <div class="hero-stat">
+        <strong><%= obAmcs.length %></strong>
+        <span>AMCs</span>
+      </div>
+      <div class="hero-stat">
+        <strong><%= obMeta.minDate ? obMeta.minDate : '–' %> → <%= obMeta.maxDate ? obMeta.maxDate : '–' %></strong>
+        <span>Data Available Range</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Main Content ── -->
+<main class="main" data-admin="<%= currentUser && (currentUser.role === 'admin' || currentUser.role === 'data_operator') ? 'true' : 'false' %>">
+
+  <section class="filter-card sync-actions-card" aria-label="Data backup controls">
+    <div class="filter-card-header">
+      <div>
+        <h2>Data Sync Backup</h2>
+        <p class="sync-helper" id="obSyncStatus">This table is backed up together with the Home page whenever "Save Sync" is pressed there. Use this to restore this page's data if the live source is unavailable.</p>
+      </div>
+      <div class="filter-actions">
+        <button class="btn btn-outline btn-sm" id="obBtnGetOldSync" type="button">Get Old Sync Data</button>
+      </div>
+    </div>
+  </section>
+
+  <% if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'data_operator')) { %>
+  <!-- ── Data Upload ── -->
+  <div class="filter-card" id="obUploadCard">
+    <div class="filter-card-header">
+      <h2>📤 Data Upload</h2>
+    </div>
+
+    <div class="upload-chooser">
+      <button class="btn btn-outline upload-toggle-btn" id="obBtnShowCommission">💰 Commission Structure Upload</button>
+      <a class="btn btn-outline upload-toggle-btn" id="obBtnDownloadDemo" href="/api/old-brokerage/demo-download" download>⬇️ Download Demo File</a>
+      <button class="btn btn-outline upload-toggle-btn" id="obBtnShowAdd">➕ Add New Scheme (Manual Entry)</button>
+    </div>
+
+    <datalist id="obAmcDatalist">
+      <% obAmcs.forEach(a => { %><option value="<%= a %>"></option><% }); %>
+    </datalist>
+    <datalist id="obCategoryDatalist">
+      <% obCategories.forEach(c => { %><option value="<%= c %>"></option><% }); %>
+    </datalist>
+
+    <!-- Commission Structure Upload panel -->
+    <div class="upload-panel" id="obPanelCommission" hidden>
+      <div class="upload-box">
+        <div class="upload-box-title">Commission Structure Upload — Old Brokerage Data</div>
+        <div class="upload-box-sub">
+          Choose <strong>All AMCs</strong> to update every AMC found in the Excel file, or choose one AMC to update only that AMC's schemes. The AMC and Data Period are read from the file itself.
+          <strong>Same scheme, different period = a new row</strong> — it's added alongside the older period's data, not overwritten.
+          Re-uploading the exact same AMC + Scheme + Period again just refreshes that one row. See the Demo File for the exact format.
+        </div>
+        <div class="filter-group">
+          <label for="obUploadAmc">AMC to update</label>
+          <select id="obUploadAmc" class="filter-control">
+            <option value="__all__">All AMCs</option>
+            <% obAmcs.forEach(a => { %><option value="<%= a %>"><%= a %></option><% }); %>
+          </select>
+        </div>
+        <input type="file" id="obFileCommission" accept=".xlsx,.xls" hidden>
+        <label for="obFileCommission" class="btn btn-outline btn-sm upload-btn">📁 Choose File</label>
+        <span class="upload-filename" id="obFileNameCommission">No file chosen</span>
+        <button class="btn btn-primary btn-sm upload-submit" id="obSubmitCommission" disabled>⬆ Upload &amp; Update</button>
+        <div class="upload-status" id="obStatusCommission"></div>
+      </div>
+    </div>
+
+    <!-- Add New Scheme (manual entry, no file needed) panel -->
+    <div class="upload-panel" id="obPanelAdd" hidden>
+      <div class="add-scheme-box">
+        <div class="upload-box-title">Add New Scheme — Manual Entry</div>
+        <div class="upload-box-sub">
+          Adds one row directly, no Excel needed. If this exact <strong>AMC + Scheme Name + Data Period</strong> already
+          exists it will be refreshed instead of duplicated — so to add a scheme's <em>next quarter</em>, keep the same
+          AMC/Scheme and just change the Data Period.
+        </div>
+
+        <div class="filter-grid">
+          <div class="filter-group">
+            <label for="obAddAmc">AMC</label>
+            <input type="text" id="obAddAmc" class="filter-control" list="obAmcDatalist" placeholder="Type or pick AMC…" autocomplete="off">
+          </div>
+          <div class="filter-group">
+            <label for="obAddPeriod">Data Period (Validity)</label>
+            <input type="text" id="obAddPeriod" class="filter-control" placeholder="e.g. 1 Jul 2026 – 30 Sep 2026">
+          </div>
+          <div class="filter-group">
+            <label for="obAddScheme">Scheme Name</label>
+            <input type="text" id="obAddScheme" class="filter-control" placeholder="Scheme name">
+          </div>
+          <div class="filter-group">
+            <label for="obAddCategory">Category / Tier</label>
+            <input type="text" id="obAddCategory" class="filter-control" list="obCategoryDatalist" placeholder="e.g. Equity" autocomplete="off">
+          </div>
+          <div class="filter-group">
+            <label for="obAddArn">ARN No.</label>
+            <input type="text" id="obAddArn" class="filter-control" placeholder="e.g. ARN-12345" autocomplete="off">
+          </div>
+          <div class="filter-group">
+            <label for="obAddYear1">1st Yr %</label>
+            <input type="number" step="any" id="obAddYear1" class="filter-control" placeholder="–">
+          </div>
+          <div class="filter-group">
+            <label for="obAddYear2">2nd Yr %</label>
+            <input type="number" step="any" id="obAddYear2" class="filter-control" placeholder="–">
+          </div>
+          <div class="filter-group">
+            <label for="obAddYear3">3rd Yr %</label>
+            <input type="number" step="any" id="obAddYear3" class="filter-control" placeholder="–">
+          </div>
+          <div class="filter-group">
+            <label for="obAddYear4">4th Yr %</label>
+            <input type="number" step="any" id="obAddYear4" class="filter-control" placeholder="–">
+          </div>
+          <div class="filter-group">
+            <label for="obAddYear5">5th Yr %</label>
+            <input type="number" step="any" id="obAddYear5" class="filter-control" placeholder="–">
+          </div>
+          <div class="filter-group">
+            <label for="obAddYear6">6th Yr Onward %</label>
+            <input type="number" step="any" id="obAddYear6" class="filter-control" placeholder="–">
+          </div>
+        </div>
+
+        <div class="add-scheme-actions">
+          <button class="btn btn-primary btn-sm" id="obSubmitAdd">💾 Save New Scheme</button>
+          <button class="btn btn-ghost btn-sm" id="obClearAdd">✕ Clear Form</button>
+        </div>
+        <div class="upload-status" id="obStatusAdd"></div>
+      </div>
+    </div>
+  </div>
+  <% } %>
+
+  <!-- ── Filters ── -->
+  <div class="filter-card" id="obFiltersCard">
+    <div class="filter-card-header">
+      <h2>🔎 Filter Old Brokerage Data</h2>
+      <div class="filter-actions">
+        <button class="btn btn-ghost btn-sm" data-onclick="resetOldBrokerageFilters">✕ Reset Filters</button>
+      </div>
+    </div>
+
+    <div class="filter-grid">
+
+      <!-- Financial Year (1 Apr → 31 Mar) -->
+      <div class="filter-group">
+        <label for="obQuickRange">Financial Year</label>
+        <select id="obQuickRange" class="filter-control">
+          <option value="">All Time</option>
+          <option value="2026-2027">FY 2026 – 2027</option>
+          <option value="2025-2026">FY 2025 – 2026</option>
+          <option value="2024-2025">FY 2024 – 2025</option>
+          <option value="2023-2024">FY 2023 – 2024</option>
+          <option value="2022-2023">FY 2022 – 2023</option>
+        </select>
+      </div>
+
+      <!-- From Date -->
+      <div class="filter-group">
+        <label for="obFrom">From Date</label>
+        <input id="obFrom" class="filter-control" type="date">
+      </div>
+
+      <!-- To Date -->
+      <div class="filter-group">
+        <label for="obTo">To Date</label>
+        <input id="obTo" class="filter-control" type="date">
+      </div>
+
+      <!-- AMC -->
+      <div class="filter-group">
+        <label for="obFilterAMC">AMC</label>
+        <select id="obFilterAMC" class="filter-control">
+          <option value="">All AMCs</option>
+          <% obAmcs.forEach(a => { %>
+            <option value="<%= a %>"><%= a %></option>
+          <% }); %>
+        </select>
+      </div>
+
+      <!-- Category -->
+      <div class="filter-group">
+        <label for="obFilterCategory">Category / Tier</label>
+        <select id="obFilterCategory" class="filter-control">
+          <option value="">All Categories</option>
+          <% obCategories.forEach(c => { %>
+            <option value="<%= c %>"><%= c %></option>
+          <% }); %>
+        </select>
+      </div>
+
+      <!-- ARN No. -->
+      <div class="filter-group">
+        <label for="obFilterArn">ARN No.</label>
+        <select id="obFilterArn" class="filter-control">
+          <option value="">All ARN Nos.</option>
+          <% obArns.forEach(a => { %>
+            <option value="<%= a %>"><%= a %></option>
+          <% }); %>
+        </select>
+      </div>
+
+      <!-- Scheme Name Search -->
+      <div class="filter-group">
+        <label for="obFilterSearch">Scheme Name</label>
+        <input id="obFilterSearch" class="filter-control" type="search" placeholder="Search scheme name…" autocomplete="off">
+      </div>
+
+      <!-- Missing Brokerage Data -->
+      <div class="filter-group">
+        <label for="obFilterMissingBrokerage">Brokerage Data</label>
+        <select id="obFilterMissingBrokerage" class="filter-control">
+          <option value="">All Schemes</option>
+          <option value="missing">Missing any 1–6 YR value</option>
+        </select>
+      </div>
+
+    </div>
+    <p style="font-size:.78rem;color:var(--text-muted);margin-top:.6rem">
+      Tip: the date filter matches each scheme's <em>source validity period</em> against the range you pick — rows whose validity window overlaps "From → To" are shown. Records still active with no fixed end date ("onwards / till further notice") are treated as valid through today.
+    </p>
+    <p style="font-size:.78rem;color:var(--text-muted);margin-top:.3rem">
+      Note: <strong>BER (%)</strong> and <strong>C/B 1-6YR</strong> are calculated automatically for every row — they always use that scheme's <em>current</em> BER% from the main StarPay Matrix table (BER doesn't change per old quarter, only the commission % does), so they stay in sync automatically and can't be edited here.
+    </p>
+  </div>
+
+  <!-- ── Table ── -->
+  <div class="table-card">
+
+    <div class="table-card-header">
+      <div class="table-info" style="display:flex;align-items:center;gap:.9rem;flex-wrap:wrap">
+        <span>Showing <strong id="obShowingCount">–</strong> of <strong id="obTotalCount">–</strong> records</span>
+
+        <div class="ob-col-chooser" id="obColChooser">
+          <button class="btn btn-ghost btn-sm" id="obColChooserBtn" type="button" aria-expanded="false" aria-controls="obColMenu" data-onclick="obToggleColMenu" data-onclick-event="1">👁 Columns <span class="sort-icon" id="obColChooserArrow">▾</span></button>
+          <div class="ob-col-menu" id="obColMenu" hidden>
+            <div class="ob-col-menu-title">Hide columns</div>
+            <label><input type="checkbox" value="amc"> AMC / Firm</label>
+            <label><input type="checkbox" value="scheme"> Scheme Name</label>
+            <label><input type="checkbox" value="category"> Category / Tier</label>
+            <label><input type="checkbox" value="arn"> ARN No.</label>
+            <label><input type="checkbox" value="periodFrom"> Data Period (Validity)</label>
+            <label><input type="checkbox" value="year1"> 1st Yr %</label>
+            <label><input type="checkbox" value="year2"> 2nd Yr %</label>
+            <label><input type="checkbox" value="year3"> 3rd Yr %</label>
+            <label><input type="checkbox" value="year4"> 4th Yr %</label>
+            <label><input type="checkbox" value="year5"> 5th Yr %</label>
+            <label><input type="checkbox" value="year6"> 6th Yr Onward %</label>
+            <label><input type="checkbox" value="ber"> BER (%) — from main table</label>
+            <label><input type="checkbox" value="c1"> C/B 1YR</label>
+            <label><input type="checkbox" value="c2"> C/B 2YR</label>
+            <label><input type="checkbox" value="c3"> C/B 3YR</label>
+            <label><input type="checkbox" value="c4"> C/B 4YR</label>
+            <label><input type="checkbox" value="c5"> C/B 5YR</label>
+            <label><input type="checkbox" value="c6"> C/B 6YR Onward</label>
+            <button class="btn btn-ghost btn-sm" id="obColResetBtn" type="button" style="margin-top:.4rem;width:100%">↺ Show All</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:.4rem">
+          <label style="font-size:.8rem;color:var(--text-muted)" for="obPageSize">Rows:</label>
+          <select id="obPageSize" class="filter-control" style="width:80px;padding:.3rem .5rem">
+            <option value="25">25</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+            <option value="200">200</option>
+          </select>
+        </div>
+
+        <div class="export-actions">
+          <button class="btn btn-primary btn-sm" data-onclick="exportOldBrokerageAllExcel" title="Download ALL rows to Excel">
+            📊 <span>Export All</span>
+          </button>
+          <button class="btn btn-ghost btn-sm" data-onclick="exportOldBrokerageCSV" title="Export filtered data as CSV">
+            📄 <span>CSV</span>
+          </button>
+          <button class="btn btn-ghost btn-sm" data-onclick="copyOldBrokerageTable" title="Copy to clipboard">
+            📋 <span>Copy</span>
+          </button>
+          <button class="btn btn-ghost btn-sm" data-onclick="printTable" title="Print">
+            🖨️ <span>Print</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-scroll">
+      <table class="ter-table">
+        <thead class="sticky-thead">
+          <tr>
+            <th class="col-sr" data-onclick="sortByOB" data-onclick-arg="id" data-col="id">#<span class="sort-icon">⇅</span></th>
+            <th data-onclick="sortByOB" data-onclick-arg="amc" data-col="amc">AMC / Firm<span class="sort-icon">⇅</span></th>
+            <th data-onclick="sortByOB" data-onclick-arg="scheme" data-col="scheme">Scheme Name<span class="sort-icon">⇅</span></th>
+            <th data-onclick="sortByOB" data-onclick-arg="category" data-col="category">Category / Tier<span class="sort-icon">⇅</span></th>
+            <th data-onclick="sortByOB" data-onclick-arg="arn" data-col="arn">ARN No.<span class="sort-icon">⇅</span></th>
+            <th data-onclick="sortByOB" data-onclick-arg="periodFrom" data-col="periodFrom">Data Period (Validity)<span class="sort-icon">⇅</span></th>
+            <th class="col-num" data-onclick="sortByOB" data-onclick-arg="year1" data-col="year1">1st Yr %<span class="sort-icon">⇅</span></th>
+            <th class="col-num" data-onclick="sortByOB" data-onclick-arg="year2" data-col="year2">2nd Yr %<span class="sort-icon">⇅</span></th>
+            <th class="col-num" data-onclick="sortByOB" data-onclick-arg="year3" data-col="year3">3rd Yr %<span class="sort-icon">⇅</span></th>
+            <th class="col-num" data-onclick="sortByOB" data-onclick-arg="year4" data-col="year4">4th Yr %<span class="sort-icon">⇅</span></th>
+            <th class="col-num" data-onclick="sortByOB" data-onclick-arg="year5" data-col="year5">5th Yr %<span class="sort-icon">⇅</span></th>
+            <th class="col-num" data-onclick="sortByOB" data-onclick-arg="year6" data-col="year6">6th Yr Onward %<span class="sort-icon">⇅</span></th>
+            <th class="col-num" data-onclick="sortByOB" data-onclick-arg="ber" data-col="ber" title="Current Regular BER% from the main StarPay Matrix table">BER (%)<span class="sort-icon">⇅</span></th>
+            <th class="col-num col-ratio" data-onclick="sortByOB" data-onclick-arg="c1" data-col="c1" title="Year 1 Commission ÷ current BER%">C/B 1YR<span class="sort-icon">⇅</span></th>
+            <th class="col-num col-ratio" data-onclick="sortByOB" data-onclick-arg="c2" data-col="c2" title="Year 2 Commission ÷ current BER%">C/B 2YR<span class="sort-icon">⇅</span></th>
+            <th class="col-num col-ratio" data-onclick="sortByOB" data-onclick-arg="c3" data-col="c3" title="Year 3 Commission ÷ current BER%">C/B 3YR<span class="sort-icon">⇅</span></th>
+            <th class="col-num col-ratio" data-onclick="sortByOB" data-onclick-arg="c4" data-col="c4" title="Year 4 Commission ÷ current BER%">C/B 4YR<span class="sort-icon">⇅</span></th>
+            <th class="col-num col-ratio" data-onclick="sortByOB" data-onclick-arg="c5" data-col="c5" title="5th Year Commission ÷ current BER%">C/B 5YR<span class="sort-icon">⇅</span></th>
+            <th class="col-num col-ratio" data-onclick="sortByOB" data-onclick-arg="c6" data-col="c6" title="6th Year Onward Commission ÷ current BER%">C/B 6YR<span class="sort-icon">⇅</span></th>
+            <% if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'data_operator')) { %>
+            <th class="col-actions">Actions</th>
+            <% } %>
+          </tr>
+        </thead>
+        <tbody id="obTbody"></tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination" id="obPagination"></div>
+
+  </div>
+</main>
+
+<script src="/js/old-brokerage.js?v=<%= assetVersion %>"></script>
+
+<%- include('partials/footer') %>

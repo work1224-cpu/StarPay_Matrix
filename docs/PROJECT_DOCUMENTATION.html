@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>StarPay Matrix Project Documentation</title>
+<style>
+@page { size: A4; margin: 16mm 15mm 18mm; }
+:root { --blue:#1557c0; --ink:#1e293b; --muted:#64748b; --line:#dbe3ef; --soft:#f5f8fc; }
+* { box-sizing:border-box; }
+body { margin:0; color:var(--ink); font-family:Segoe UI, Arial, sans-serif; font-size:10.5pt; line-height:1.48; }
+.cover { min-height:245mm; display:flex; flex-direction:column; justify-content:center; page-break-after:always; padding:18mm; background:linear-gradient(145deg,#1557c0,#1a6fe8); color:#fff; }
+.cover h1 { font-size:31pt; line-height:1.12; margin:0 0 12pt; }
+.cover h2 { font-size:16pt; font-weight:400; margin:0; opacity:.9; }
+.cover .meta { margin-top:42mm; font-size:10pt; line-height:1.8; border-top:1px solid rgba(255,255,255,.45); padding-top:12pt; }
+#content h1 { color:var(--blue); font-size:23pt; border-bottom:3px solid var(--blue); padding-bottom:8pt; page-break-before:always; }
+#content h1:first-child { page-break-before:auto; }
+#content h2 { color:var(--blue); font-size:16pt; margin-top:20pt; page-break-after:avoid; }
+#content h3 { color:#244b82; font-size:12.5pt; margin-top:14pt; page-break-after:avoid; }
+p { margin:6pt 0; }
+ul,ol { margin-top:4pt; }
+li { margin:2pt 0; }
+blockquote { margin:10pt 0; padding:8pt 11pt; background:#eef5ff; border-left:4px solid var(--blue); }
+code { background:#eef2f7; padding:1pt 3pt; border-radius:3px; font-family:Consolas,monospace; font-size:9pt; }
+pre { background:#f3f6fa; border:1px solid var(--line); padding:9pt; white-space:pre-wrap; font:8.5pt Consolas,monospace; page-break-inside:avoid; }
+table { width:100%; border-collapse:collapse; margin:9pt 0 13pt; font-size:9pt; page-break-inside:auto; }
+th { background:#1557c0; color:#fff; text-align:left; font-weight:600; }
+th,td { border:1px solid var(--line); padding:5pt 6pt; vertical-align:top; }
+tr:nth-child(even) td { background:var(--soft); }
+hr { border:0; border-top:1px solid var(--line); margin:16pt 0; }
+.small { color:var(--muted); font-size:9pt; }
+.screenshot { display:block; width:100%; max-height:150mm; object-fit:contain; border:1px solid var(--line); margin:10pt 0 14pt; page-break-inside:avoid; }
+.screenshot-caption { color:var(--muted); font-size:9pt; text-align:center; margin-top:-8pt; margin-bottom:12pt; }
+@media print { a { color:inherit; text-decoration:none; } thead { display:table-header-group; } }
+</style>
+</head>
+<body>
+<section class="cover">
+  <h1>StarPay Matrix</h1>
+  <h2>Mutual Fund TER Portal<br>Complete Project Documentation</h2>
+  <div class="meta">
+    Functional, technical and operational reference<br>
+    Prepared from the implemented source code and runtime verification<br>
+    Runtime verification date: 19 September 2026
+  </div>
+</section>
+<main id="content"><p>Loading documentation...</p></main>
+<script>
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function inline(s){return esc(s).replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/\*([^*]+)\*/g,'<em>$1</em>');}
+function render(md){
+ const lines=md.replace(/\r/g,'').split('\n'), out=[]; let i=0, inCode=false, code=[];
+ while(i<lines.length){let l=lines[i];
+  if(l.startsWith('```')){if(!inCode){inCode=true;code=[];}else{out.push('<pre>'+esc(code.join('\n'))+'</pre>');inCode=false;}i++;continue;}
+  if(inCode){code.push(l);i++;continue;}
+  if(!l.trim()){i++;continue;}
+  if(/^\|/.test(l)){let rows=[];while(i<lines.length&&/^\|/.test(lines[i])){rows.push(lines[i].trim().replace(/^\||\|$/g,'').split('|').map(x=>x.trim()));i++;}if(rows.length>1&&rows[1].every(x=>/^[-: ]+$/.test(x))){rows.splice(1,1);}let h='<table><thead><tr>'+rows[0].map(x=>'<th>'+inline(x)+'</th>').join('')+'</tr></thead><tbody>'+rows.slice(1).map(r=>'<tr>'+r.map(x=>'<td>'+inline(x)+'</td>').join('')+'</tr>').join('')+'</tbody></table>';out.push(h);continue;}
+  let m=l.match(/^(#{1,3})\s+(.*)$/);if(m){let n=m[1].length;out.push('<h'+n+'>'+inline(m[2])+'</h'+n+'>');i++;continue;}
+  if(/^>\s?/.test(l)){out.push('<blockquote>'+inline(l.replace(/^>\s?/,''))+'</blockquote>');i++;continue;}
+  if(/^[-*]\s+/.test(l)){let items=[];while(i<lines.length&&/^[-*]\s+/.test(lines[i])){items.push('<li>'+inline(lines[i].replace(/^[-*]\s+/,''))+'</li>');i++;}out.push('<ul>'+items.join('')+'</ul>');continue;}
+  if(/^\d+\.\s+/.test(l)){let items=[];while(i<lines.length&&/^\d+\.\s+/.test(lines[i])){items.push('<li>'+inline(lines[i].replace(/^\d+\.\s+/,''))+'</li>');i++;}out.push('<ol>'+items.join('')+'</ol>');continue;}
+  let image=l.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);if(image){out.push('<img class="screenshot" src="'+esc(image[2])+'" alt="'+esc(image[1])+'"><div class="screenshot-caption">'+inline(image[1])+'</div>');i++;continue;}
+  let para=[l];i++;while(i<lines.length&&lines[i].trim()&&!/^#{1,3}\s|^```|^\||^>\s?|^[-*]\s+|^\d+\.\s+/.test(lines[i])){para.push(lines[i]);i++;}out.push('<p>'+inline(para.join(' '))+'</p>');
+ }
+ return out.join('\n');
+}
+fetch('PROJECT_DOCUMENTATION.md').then(r=>r.text()).then(md=>{document.getElementById('content').innerHTML=render(md);});
+</script>
+</body>
+</html>

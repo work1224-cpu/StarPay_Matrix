@@ -1,0 +1,59 @@
+<%- include('partials/header') %>
+
+<main class="main" style="max-width:860px">
+  <div class="table-card" style="padding:2rem">
+    <h1 style="font-size:1.5rem;margin-bottom:1rem">About the StarPay Matrix</h1>
+
+    <p style="margin-bottom:1rem;color:var(--text-muted)">
+      This portal provides real-time Total Expense Ratio (TER) data for all AMFI-registered mutual fund schemes in India.
+    </p>
+
+    <h2 style="font-size:1.1rem;margin:1.5rem 0 .5rem">Data Sources</h2>
+    <ul style="padding-left:1.5rem;color:var(--text-muted);line-height:2">
+      <li><strong>TER Data:</strong> <a href="https://www.amfiindia.com/ter-of-mf-schemes" target="_blank">AMFI TER of MF Schemes</a></li>
+      <li><strong>NAV Data:</strong> <a href="https://portal.amfiindia.com/spages/NAVAll.txt" target="_blank">AMFI NAVAll.txt</a></li>
+    </ul>
+
+    <h2 style="font-size:1.1rem;margin:1.5rem 0 .5rem">How it Works</h2>
+    <ul style="padding-left:1.5rem;color:var(--text-muted);line-height:2">
+      <li>Data is fetched from AMFI on server startup and every 30 minutes</li>
+      <li>TER and NAV datasets are merged using scheme name matching</li>
+      <li>All data is held in memory – no database required</li>
+      <li>TER Difference = Regular TER − Direct TER</li>
+      <li>BER Difference = Regular BER − Direct BER</li>
+    </ul>
+
+    <h2 style="font-size:1.1rem;margin:1.5rem 0 .5rem">API Endpoints</h2>
+    <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+      <thead>
+        <tr style="background:var(--bg)">
+          <th style="padding:.5rem .75rem;text-align:left;border-bottom:2px solid var(--border)">Endpoint</th>
+          <th style="padding:.5rem .75rem;text-align:left;border-bottom:2px solid var(--border)">Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% [
+          ['/api/schemes', 'All merged scheme data (supports ?amc= ?category= ?type= ?search= ?page= ?limit=)'],
+          ['/api/amcs', 'List of all AMCs'],
+          ['/api/categories', 'List of all scheme categories'],
+          ['/api/types', 'List of all scheme types'],
+          ['/api/status', 'Cache status and last refresh time'],
+          ['/api/refresh', 'Trigger a manual data refresh'],
+        ].forEach(([ep, desc]) => { %>
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:.5rem .75rem"><code style="background:var(--bg);padding:.1rem .4rem;border-radius:4px;font-size:.8rem"><%= ep %></code></td>
+          <td style="padding:.5rem .75rem;color:var(--text-muted)"><%= desc %></td>
+        </tr>
+        <% }); %>
+      </tbody>
+    </table>
+
+    <p style="margin-top:1.5rem;color:var(--text-muted);font-size:.85rem">
+      <strong>Disclaimer:</strong> This portal is for informational purposes only. Data is sourced from AMFI and may
+      not always be current. Always verify expense ratios from the official
+      <a href="https://www.amfiindia.com" target="_blank">AMFI website</a> or fund house documents.
+    </p>
+  </div>
+</main>
+
+<%- include('partials/footer') %>

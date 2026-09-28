@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> | StarPay Matrixl</title>
+  <meta name="description" content="Real-time Mutual Fund Total Expense Ratio portal powered by AMFI data">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/main.css?v=<%= assetVersion %>">
+</head>
+<body>
+<!-- Must load before any other script: wraps window.fetch so every
+     POST/PUT/DELETE automatically carries the CSRF token. -->
+<script src="/js/csrf.js?v=<%= assetVersion %>"></script>
+
+<!-- ── Navbar ── -->
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a href="/" class="navbar-brand">
+      <div class="logo-icon">₹</div>
+      <div>
+        <div>StarPay Matrix</div>
+        <div class="navbar-subtitle">Mutual Fund Expense Ratio Data</div>
+      </div>
+    </a>
+    <a href="/old-brokerage-data" class="btn btn-outline btn-sm" title="Date-wise historical brokerage/trail structures">📜 All  Brokerage Data</a>
+    <a href="/brokerage-analysis" class="btn btn-outline btn-sm" title="Charts and comparisons across every scheme, AMC and year">📊 Brokerage Analysis</a>
+    <div class="navbar-spacer"></div>
+    <div class="navbar-status">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">Loading…</span>
+      &nbsp;|&nbsp;
+      <span id="lastRefreshed">–</span>
+    </div>
+    <div class="amc-hamburger">
+      <button id="amcMenuToggle" class="btn btn-outline btn-sm hamburger-btn" type="button" aria-expanded="false">☰ Firms</button>
+      <div id="amcMenuPanel" class="amc-menu-panel" hidden>
+        <div class="amc-menu-header">
+          <strong>AMC Firms</strong>
+          <button id="amcMenuClose" type="button" class="btn btn-ghost btn-sm">✕</button>
+        </div>
+        <div class="amc-menu-list">
+          <% const _amcs = (typeof amcs !== 'undefined' && Array.isArray(amcs)) ? amcs : []; %>
+          <% _amcs.forEach(amc => { %>
+            <% const slug = amc.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''); %>
+            <a class="amc-menu-item <%= (activeAmcSlug || '') === slug ? 'active' : '' %>" href="/<%= slug %>"><%= amc %></a>
+          <% }); %>
+        </div>
+      </div>
+    </div>
+    <% if (currentUser && currentUser.role === 'admin') { %>
+      <a class="btn btn-outline btn-sm" href="/admin/users" title="Manage users">👤 Users</a>
+    <% } %>
+    <% if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'data_operator')) { %>
+      <button class="btn btn-outline btn-sm" onclick="triggerRefresh()" title="Refresh data from AMFI">
+        ↻ Refresh
+      </button>
+    <% } %>
+    <% if (currentUser) { %>
+      <span class="nav-user-pill">Hello <strong><%= currentUser.username %></strong> (<%= currentUser.role %>)</span>
+      <form action="/logout" method="post" style="display:inline">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button class="btn btn-ghost btn-sm" type="submit">Logout</button>
+      </form>
+    <% } else { %>
+      <a class="btn btn-primary btn-sm" href="/login">Login</a>
+    <% } %>
+  </div>
+</nav>
