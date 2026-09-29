@@ -746,9 +746,19 @@ async function loadData() {
         </div></td></tr>`;
         toast('Live data is unavailable: ' + err.message, 'error');
         updateStatus('error');
+        return;
       }
     }
   }
+
+  const colspan = document.querySelector('main.main')?.dataset.admin === 'true' ? 25 : 24;
+  tbody.innerHTML = `<tr><td colspan="${colspan}"><div class="state-box">
+    <span class="state-icon">⏳</span>
+    <h3>Data is still loading</h3>
+    <p>The first live refresh is taking longer than expected. Try again shortly.</p>
+    <button class="btn btn-primary" onclick="loadData()" style="margin-top:1rem">⟳ Retry</button>
+  </div></td></tr>`;
+  updateStatus('loading');
 }
 
 function updateAMCDropdown() {
