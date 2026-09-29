@@ -18,6 +18,15 @@ process.env.COMMISSION_OVERRIDE_CACHE_PATH = path.join(tempDir, 'commission-over
 
 const cacheService = require('../services/cacheService');
 
+test('loading status is exposed on cold refresh but does not replace a ready cache', () => {
+  cacheService.setStatus('loading');
+  assert.equal(cacheService.getStatus().status, 'loading');
+
+  cacheService.setSchemes([{ schemeName: 'Ready Scheme', amc: 'Ready AMC' }]);
+  cacheService.setStatus('loading');
+  assert.equal(cacheService.getStatus().status, 'ready');
+});
+
 test('updateSchemeValues updates matching scheme fields', () => {
   cacheService.setSchemes([
     {
