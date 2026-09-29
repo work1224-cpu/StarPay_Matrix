@@ -46,7 +46,7 @@ async function refreshData() {
   }
 
   refreshInProgress = true;
-  // Note: don't call setStatus('loading') — it won't overwrite 'ready' anyway
+  cacheService.setStatus('loading');
   logger.info('Starting full data refresh...');
 
   try {
