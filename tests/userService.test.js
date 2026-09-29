@@ -33,3 +33,32 @@ test('createUser persists a viewer account and authenticateUser works', async ()
     // Ignore Windows file lock EPERM on temp dir cleanup
   }
 });
+
+test('bootstrap credentials update an untouched seeded admin on an existing database', () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ter-portal-admin-'));
+  const storePath = path.join(tempDir, 'users.db');
+  const previousUsername = process.env.ADMIN_USERNAME;
+  const previousPassword = process.env.ADMIN_PASSWORD;
+
+  try {
+    delete process.env.ADMIN_USERNAME;
+    delete process.env.ADMIN_PASSWORD;
+    resetUsersStore(storePath);
+
+    process.env.ADMIN_USERNAME = 'host-admin';
+    process.env.ADMIN_PASSWORD = 'host-pass-123';
+
+    assert.equal(authenticateUser('host-admin', 'host-pass-123').success, true);
+    assert.equal(authenticateUser('admin', 'admin123').success, false);
+  } finally {
+    if (previousUsername === undefined) delete process.env.ADMIN_USERNAME;
+    else process.env.ADMIN_USERNAME = previousUsername;
+    if (previousPassword === undefined) delete process.env.ADMIN_PASSWORD;
+    else process.env.ADMIN_PASSWORD = previousPassword;
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    } catch (err) {
+      // Ignore Windows file lock EPERM on temp dir cleanup
+    }
+  }
+});
