@@ -6,6 +6,7 @@ const logger = require('../helpers/logger');
 const { getDb, resetForTests } = require('./db');
 
 const BCRYPT_ROUNDS = 12;
+let bootstrapCredentialsApplied = false;
 
 // Old scheme (pre-bcrypt) was an unsalted SHA-256 hex digest — always 64 hex chars.
 // bcrypt hashes always start with $2a$/$2b$/$2y$, so the two are easy to tell apart.
@@ -108,14 +109,50 @@ function seedIfEmpty(skipLegacyImport = false) {
 }
 
 function ensureReady() {
+  const db = getDb();
   seedIfEmpty();
-  return getDb();
+  if (!bootstrapCredentialsApplied) {
+    applyBootstrapCredentials(db);
+    bootstrapCredentialsApplied = true;
+  }
+  return db;
 }
 
 // Letters, numbers, dot, underscore, hyphen, @ (for email-style usernames).
 // Deliberately excludes quotes/angle-brackets so a username can never be used
 // to break out of an HTML attribute or inline-script string context.
 const USERNAME_PATTERN = /^[a-zA-Z0-9._@-]+$/;
+
+function applyBootstrapCredentials(db) {
+  const usernameConfigured = typeof process.env.ADMIN_USERNAME === 'string' && process.env.ADMIN_USERNAME.trim() !== '';
+  const passwordConfigured = typeof process.env.ADMIN_PASSWORD === 'string' && process.env.ADMIN_PASSWORD !== '';
+  if (!usernameConfigured && !passwordConfigured) return;
+
+  const systemAdmin = db.prepare(
+    "SELECT * FROM users WHERE role = 'admin' AND createdBy = 'system' AND updatedAt IS NULL ORDER BY createdAt ASC LIMIT 1"
+  ).get();
+  if (!systemAdmin) return;
+
+  const username = usernameConfigured ? process.env.ADMIN_USERNAME.trim().toLowerCase() : systemAdmin.username;
+  const password = passwordConfigured ? process.env.ADMIN_PASSWORD : null;
+  if (!USERNAME_PATTERN.test(username) || (password !== null && password.trim().length < 4)) {
+    logger.warn('Ignoring invalid ADMIN_USERNAME or ADMIN_PASSWORD bootstrap setting');
+    return;
+  }
+
+  const collision = db.prepare('SELECT 1 FROM users WHERE lower(username) = ? AND username <> ?').get(username, systemAdmin.username);
+  if (collision) {
+    logger.warn('Ignoring ADMIN_USERNAME because it belongs to another user');
+    return;
+  }
+
+  if (password !== null) {
+    db.prepare('UPDATE users SET username = ?, password = ? WHERE username = ?')
+      .run(username, hashPassword(password), systemAdmin.username);
+  } else {
+    db.prepare('UPDATE users SET username = ? WHERE username = ?').run(username, systemAdmin.username);
+  }
+}
 
 function createUser(username, password, role = 'viewer') {
   const normalized = String(username || '').trim().toLowerCase();
@@ -331,8 +368,11 @@ function requireAuth(requiredRole = 'viewer') {
  *  any file path works, SQLite doesn't care about the extension. */
 function resetUsersStore(customPath) {
   resetForTests(customPath);
+  bootstrapCredentialsApplied = false;
   seedIfEmpty(true); // always a clean slate — never import this machine's real data/users.json
-  return getUsers();
+  const users = getUsers();
+  bootstrapCredentialsApplied = false;
+  return users;
 }
 
 module.exports = {
