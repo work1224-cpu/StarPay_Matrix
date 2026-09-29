@@ -132,7 +132,7 @@ async function getSchemes(req, res) {
         success: false,
         message: status.status === 'loading'
           ? 'Data is loading, please retry in 30 seconds'
-          : 'Data not available — try refreshing',
+          : status.error || 'Data not available — try refreshing',
         status: status.status,
         retryAfter: 30,
       });
